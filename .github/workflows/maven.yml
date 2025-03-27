@@ -1,0 +1,55 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v2
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Build with Maven
+      run: mvn clean package
+      
+    - name: Run tests
+      run: mvn test
+      
+    - name: Verify test coverage
+      run: |
+        mvn jacoco:report
+        # Add coverage verification logic here
+        
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v2
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        
+    - name: Deploy to Azure App Service
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'ecicredit-pagos'
+        slot-name: 'production'
+        package: ${{ github.workspace }}/target/*.jar
